@@ -1,0 +1,36 @@
+{
+  "name": "ecommerce-postgres-connector",
+  "config": {
+    "connector.class":              "io.debezium.connector.postgresql.PostgresConnector",
+
+    "database.hostname":            "postgres",
+    "database.port":                "5432",
+    "database.user":                "debezium",
+    "database.password":            "debezium",
+    "database.dbname":              "ecommerce",
+    "database.server.name":         "cdc",
+
+    "plugin.name":                  "pgoutput",
+    "publication.name":             "debezium_pub",
+    "publication.autocreate.mode":  "disabled",
+    "slot.name":                    "debezium_slot",
+
+    "topic.prefix":                 "cdc",
+    "table.include.list":           "public.customers,public.products,public.orders,public.order_items,public.payments,public.returns",
+
+    "key.converter":                "org.apache.kafka.connect.json.JsonConverter",
+    "key.converter.schemas.enable": "false",
+    "value.converter":              "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": "false",
+
+    "decimal.handling.mode":        "double",
+    "time.precision.mode":          "connect",
+    "tombstones.on.delete":         "false",
+
+    "snapshot.mode":                "initial",
+
+    "heartbeat.interval.ms":        "10000",
+    "max.batch.size":               "2048",
+    "max.queue.size":               "8192"
+  }
+}
