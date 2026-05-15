@@ -188,8 +188,11 @@ services:
     command: >
       --character-set-server=utf8
       --collation-server=utf8_unicode_ci
-    ports:
-      - "3306:3306"
+    # Pas d'exposition vers l'hote : MariaDB n'est utilise que par
+    # hive-metastore via le reseau interne Docker. Decommenter et
+    # changer le port hote si besoin d'inspection externe.
+    # ports:
+    #   - "3307:3306"
     volumes:
       - mariadb-data:/var/lib/mysql
     healthcheck:
@@ -237,7 +240,7 @@ services:
 
   # ── Spark Master ──────────────────────────────
   spark-master:
-    image: bitnami/spark:3.5
+    image: bitnamilegacy/spark:3.5
     container_name: cdc-spark-master
     environment:
       SPARK_MODE:        master
@@ -254,7 +257,7 @@ services:
 
   # ── Spark Worker ──────────────────────────────
   spark-worker:
-    image: bitnami/spark:3.5
+    image: bitnamilegacy/spark:3.5
     container_name: cdc-spark-worker
     depends_on:
       - spark-master
@@ -317,5 +320,52 @@ services:
         superset init &&
         superset run -p 8088 --with-threads --reload --debugger
       "
+    networks:
+      - cdc-net
+
+  # ── Dashboard unifie (Flask + Chart.js) ───────
+  #
+  # Portail unique qui regroupe :
+  #   - le statut de tous les services de la stack
+  #   - les KPI analytiques en direct via Trino
+  #   - les connecteurs Debezium et apps Spark
+  #   - les liens rapides vers Spark/MinIO/Trino/Superset
+  #
+  # Ouvert sur http://localhost:5000
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    image: cdc-dashboard:latest
+    container_name: cdc-dashboard
+    depends_on:
+      - trino
+      - kafka-connect
+      - spark-master
+      - minio
+    environment:
+      TRINO_HOST:        trino
+      TRINO_PORT:        "8080"
+      TRINO_USER:        admin
+      TRINO_CATALOG:     iceberg
+      TRINO_SCHEMA:      analytics
+      KAFKA_CONNECT_URL: http://kafka-connect:8083
+      MINIO_URL:         http://minio:9000
+      SPARK_MASTER_URL:  http://spark-master:8080
+      SUPERSET_URL:      http://superset:8088
+      POSTGRES_HOST:     postgres
+      POSTGRES_PORT:     "5432"
+      POSTGRES_DB:       ecommerce
+      POSTGRES_USER:     ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      KAFKA_HOST:        kafka
+      HIVE_HOST:         hive-metastore
+      DEBEZIUM_CONFIG_PATH: /app/config/debezium-connector.json
+    ports:
+      - "5000:5000"
+    volumes:
+      # Monte le fichier de config Debezium pour pouvoir le re-poster
+      # depuis l'interface (onglet Actions / Scripts).
+      - ./config/debezium-connector.json:/app/config/debezium-connector.json:ro
     networks:
       - cdc-net

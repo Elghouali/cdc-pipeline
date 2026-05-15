@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CDC Pipeline Dashboard — Sujet 4</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <!-- ─── HEADER ───────────────────────────────────────────── -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">CDC</div>
+      <div>
+        <h1>Pipeline Big Data CDC</h1>
+        <p class="subtitle">Sujet 4 — II-BDCC · Change Data Capture quasi temps réel</p>
+      </div>
+    </div>
+    <div class="actions">
+      <span id="last-update" class="last-update">—</span>
+      <button id="refresh-btn" class="btn-primary">↻ Rafraîchir</button>
+    </div>
+  </header>
+
+  <!-- ─── ONGLETS DE NAVIGATION ────────────────────────────── -->
+  <nav class="tabs">
+    <button class="tab active" data-tab="overview">Vue d'ensemble</button>
+    <button class="tab" data-tab="services">Services</button>
+    <button class="tab" data-tab="postgres">Base source</button>
+    <button class="tab" data-tab="cdc">CDC &amp; Bronze</button>
+    <button class="tab" data-tab="analytics">Analytique Gold</button>
+    <button class="tab" data-tab="actions">Scripts &amp; Actions</button>
+    <button class="tab" data-tab="architecture">Architecture</button>
+  </nav>
+
+  <main class="container">
+
+    <!-- ─── SECTION : VUE D'ENSEMBLE ────────────────────────── -->
+    <section id="overview" class="tab-panel active">
+      <h2>Indicateurs globaux</h2>
+      <div class="cards">
+        <div class="kpi-card">
+          <div class="kpi-label">Évènements CDC capturés</div>
+          <div class="kpi-value" id="kpi-cdc">—</div>
+          <div class="kpi-hint">Total Bronze (toutes tables)</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Commandes (Gold)</div>
+          <div class="kpi-value" id="kpi-orders">—</div>
+          <div class="kpi-hint">gold_orders</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Clients</div>
+          <div class="kpi-value" id="kpi-customers">—</div>
+          <div class="kpi-hint">gold_customers</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Chiffre d'affaires brut</div>
+          <div class="kpi-value" id="kpi-revenue">—</div>
+          <div class="kpi-hint">gold_sales_facts</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Latence moyenne</div>
+          <div class="kpi-value" id="kpi-latency">—</div>
+          <div class="kpi-hint">WAL → Bronze (sec.)</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Services sains</div>
+          <div class="kpi-value" id="kpi-services">—</div>
+          <div class="kpi-hint">Vivants / Total</div>
+        </div>
+      </div>
+
+      <h2>Liens rapides</h2>
+      <div class="links-grid" id="links-grid"></div>
+    </section>
+
+    <!-- ─── SECTION : SERVICES ──────────────────────────────── -->
+    <section id="services" class="tab-panel">
+      <h2>État des services de la stack</h2>
+      <p class="muted">Mise à jour automatique toutes les 15 secondes.</p>
+      <div id="services-list" class="services-grid"></div>
+
+      <h2>Connecteurs Debezium</h2>
+      <div id="connectors-box" class="card">
+        <p class="muted">Chargement…</p>
+      </div>
+
+      <h2>Applications Spark actives</h2>
+      <div id="spark-box" class="card">
+        <p class="muted">Chargement…</p>
+      </div>
+    </section>
+
+    <!-- ─── SECTION : CDC & BRONZE ──────────────────────────── -->
+    <section id="cdc" class="tab-panel">
+      <h2>Évènements CDC par table source</h2>
+      <p class="muted">Compte total + ventilation par type d'opération
+        (c = insert, u = update, d = delete, r = snapshot).</p>
+
+      <div class="chart-row">
+        <div class="card chart-card">
+          <h3>Volume d'évènements par table</h3>
+          <canvas id="chart-cdc-bar"></canvas>
+        </div>
+        <div class="card chart-card">
+          <h3>Opérations par type (toutes tables)</h3>
+          <canvas id="chart-cdc-pie"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Détails par table</h3>
+        <table id="table-cdc-events">
+          <thead>
+            <tr>
+              <th>Table source</th>
+              <th>Total</th>
+              <th>Insertions</th>
+              <th>Mises à jour</th>
+              <th>Suppressions</th>
+              <th>Snapshots</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <h2>Latence source → analytique</h2>
+      <div class="card">
+        <table id="table-latency">
+          <thead>
+            <tr>
+              <th>Table</th>
+              <th>Évènements</th>
+              <th>Moyenne (s)</th>
+              <th>Max (s)</th>
+              <th>p95 (s)</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ─── SECTION : ANALYTIQUE GOLD ───────────────────────── -->
+    <section id="analytics" class="tab-panel">
+      <h2>Ventes par mois et canal</h2>
+      <div class="chart-row">
+        <div class="card chart-card">
+          <h3>Chiffre d'affaires mensuel (par canal)</h3>
+          <canvas id="chart-sales"></canvas>
+        </div>
+        <div class="card chart-card">
+          <h3>Mix moyens de paiement</h3>
+          <canvas id="chart-payments"></canvas>
+        </div>
+      </div>
+
+      <h2>Taux d'annulation et de retour</h2>
+      <div class="card chart-card">
+        <canvas id="chart-cancel-return"></canvas>
+      </div>
+
+      <h2>Revenu par segment client × catégorie produit</h2>
+      <div class="card">
+        <table id="table-segment">
+          <thead>
+            <tr>
+              <th>Segment</th>
+              <th>Catégorie</th>
+              <th>Commandes</th>
+              <th>CA brut</th>
+              <th>CA net</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <h2>Top 10 clients par valeur vie client (LTV)</h2>
+      <div class="card">
+        <table id="table-top-customers">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Nom</th>
+              <th>Ville</th>
+              <th>Segment</th>
+              <th>Commandes</th>
+              <th>LTV</th>
+              <th>Panier moyen</th>
+              <th>Dernière commande</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ─── SECTION : BASE SOURCE POSTGRESQL ────────────────── -->
+    <section id="postgres" class="tab-panel">
+      <h2>Base de données opérationnelle (PostgreSQL)</h2>
+      <p class="muted">Lecture directe sur la base source <code>ecommerce</code>.
+        Les modifications ici sont automatiquement captées par Debezium et
+        propagées dans la pipeline CDC.</p>
+
+      <div class="cards" id="pg-summary-cards"></div>
+
+      <h2>Sélectionner une table</h2>
+      <div class="tags" id="pg-tabs">
+        <!-- boutons remplis par JS -->
+      </div>
+
+      <div class="card" style="margin-top: 16px;">
+        <h3 id="pg-table-title">—</h3>
+        <p class="muted" id="pg-table-meta">—</p>
+        <div style="overflow-x:auto;">
+          <table id="pg-table">
+            <thead><tr></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── SECTION : ACTIONS / SCRIPTS ─────────────────────── -->
+    <section id="actions" class="tab-panel">
+      <h2>Scripts &amp; actions sur la pipeline</h2>
+      <p class="muted">
+        Ces actions reproduisent depuis l'interface ce que font les scripts
+        <code>scripts/register_connector.sh</code> et
+        <code>scripts/simulate_changes.sh</code>. Chaque action déclenche des
+        évènements CDC qui apparaîtront dans les KPI après quelques secondes
+        (latence Kafka → Spark Bronze).
+      </p>
+
+      <div class="card">
+        <h3>Journal d'exécution</h3>
+        <pre id="action-log" class="action-log">En attente d'une action…</pre>
+        <button class="btn-secondary" id="clear-log">Effacer le journal</button>
+      </div>
+
+      <h2>Actions disponibles</h2>
+      <div id="actions-grid" class="actions-grid">
+        <!-- rempli par JS -->
+      </div>
+    </section>
+
+    <!-- ─── SECTION : ARCHITECTURE ─────────────────────────── -->
+    <section id="architecture" class="tab-panel">
+      <h2>Architecture cible</h2>
+      <div class="card">
+        <pre class="ascii-arch">
+   ┌──────────────┐     WAL logical    ┌─────────────────┐
+   │  PostgreSQL  │ ──────────────────▶│  Debezium /     │
+   │  (e-commerce)│                    │  Kafka Connect  │
+   └──────────────┘                    └────────┬────────┘
+                                                │ topics cdc.public.*
+                                                ▼
+                                       ┌─────────────────┐
+                                       │   Apache Kafka  │
+                                       └────────┬────────┘
+                                                │
+                                                ▼
+                          ┌──────────────────────────────────┐
+                          │  Spark Structured Streaming      │
+                          │                                  │
+                          │  Bronze  →  Silver  →  Gold      │
+                          └────────┬─────────────────────────┘
+                                   │
+                                   ▼
+                         ┌──────────────────────┐
+                         │  Apache Iceberg      │
+                         │  (sur MinIO + Hive)  │
+                         └──────────┬───────────┘
+                                    │
+                          ┌─────────┴────────┐
+                          ▼                  ▼
+                    ┌──────────┐      ┌──────────────┐
+                    │  Trino   │      │  Ce Dashboard│
+                    └────┬─────┘      └──────────────┘
+                         │
+                         ▼
+                    ┌──────────┐
+                    │ Superset │
+                    └──────────┘
+        </pre>
+      </div>
+
+      <h2>Couches du Lakehouse</h2>
+      <div class="cards">
+        <div class="layer-card bronze">
+          <h3>🥉 Bronze</h3>
+          <p>Évènements CDC bruts depuis Kafka, en append.
+             Tables <code>bronze_*_cdc</code> partitionnées par
+             <code>ingestion_date</code>.</p>
+        </div>
+        <div class="layer-card silver">
+          <h3>🥈 Silver</h3>
+          <p>Données typées, dédupliquées, mises à jour par MERGE INTO
+             sur la clé primaire. Tables <code>silver_*</code>.</p>
+        </div>
+        <div class="layer-card gold">
+          <h3>🥇 Gold</h3>
+          <p>Agrégats métier rafraîchis toutes les 5 min :
+             <code>gold_customers</code>, <code>gold_orders</code>,
+             <code>gold_sales_facts</code>, etc.</p>
+        </div>
+      </div>
+
+      <h2>Stack technique</h2>
+      <div id="stack-list" class="tags"></div>
+    </section>
+
+  </main>
+
+  <footer>
+    <p>CDC Pipeline · II-BDCC · Sujet 4 · Auto-refresh 15 s</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

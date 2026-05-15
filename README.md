@@ -136,6 +136,7 @@ Open these URLs in your browser:
 
 | Service | URL | Login |
 |---|---|---|
+| **Dashboard CDC (portail unique)** | **http://localhost:5000** | **(no auth)** |
 | Spark Master UI | http://localhost:8085 | (no auth) |
 | MinIO Console | http://localhost:9001 | minioadmin / minioadmin |
 | Kafka Connect | http://localhost:8083/connectors | (no auth) |
@@ -186,6 +187,28 @@ Type `exit` to leave the CLI.
 
 ---
 
+### Step 5b — Open the unified Dashboard
+
+Le dashboard unifié regroupe **toutes les informations du projet sur une seule page** :
+statut des services, KPI analytiques live (via Trino), connecteurs Debezium,
+applications Spark, graphiques et liens vers les autres UIs.
+
+Ouvre simplement : **http://localhost:5000**
+
+Onglets disponibles :
+
+| Onglet | Contenu |
+|--------|---------|
+| Vue d'ensemble | Cartes KPI (CDC, commandes, clients, CA, latence) + liens rapides |
+| Services | État UP/DOWN de Postgres, Kafka, Connect, Spark, Trino, MinIO, Superset |
+| CDC & Bronze | Volume d'évènements par table, ventilation INSERT/UPDATE/DELETE, latence |
+| Analytique Gold | Ventes mensuelles, mix paiement, taux annulation/retour, top 10 clients |
+| Architecture | Schéma + description des couches Bronze/Silver/Gold |
+
+Auto-refresh toutes les 15 secondes. Cliquer sur **↻ Rafraîchir** pour forcer.
+
+---
+
 ### Step 6 — Set up the Superset dashboard
 
 See **[superset_dashboard.md](superset_dashboard.md)** for the full chart-by-chart walkthrough. Quick summary:
@@ -231,6 +254,7 @@ docker compose down
 
 | Service          | URL                        | Login |
 |------------------|----------------------------|-------|
+| **Dashboard CDC**| **http://localhost:5000**  | (no auth) |
 | Superset         | http://localhost:8088      | admin / admin |
 | Trino UI         | http://localhost:8080      | (no auth) |
 | Spark Master UI  | http://localhost:8085      | (no auth) |
@@ -244,8 +268,13 @@ docker compose down
 
 ```
 cdc-pipeline/
-├── docker-compose.yml              All 12 services
+├── docker-compose.yml              All 13 services (dashboard included)
 ├── .env                            Credentials (do not commit real secrets)
+├── dashboard/                      Unified web dashboard (Flask + Chart.js)
+│   ├── app.py                      Flask API + Trino client
+│   ├── requirements.txt
+│   ├── Dockerfile
+│   └── static/                     index.html, app.js, style.css
 ├── config/
 │   ├── debezium-connector.json     Kafka Connect source connector
 │   ├── hive/
