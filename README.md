@@ -92,13 +92,14 @@ All commands below assume you are in the `cdc-pipeline/` directory.
 
 ---
 
-### Step 2 — (Optional) Review credentials
+### Step 2 — Create local credentials
 
 ```bash
-cat .env
+cp .env.example .env
+# Edit .env and replace every example password and secret before starting.
 ```
 
-The defaults work out of the box. Change values here if you need custom passwords before first start. All services read credentials from this file at startup.
+Use a **private, locally created** `.env` file for this demonstration stack. The example values are development placeholders only. Never commit a real secret, expose these services to the public internet, or reuse the example passwords in a deployment. All services read their configuration from this file at startup.
 
 ---
 
