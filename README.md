@@ -1,5 +1,7 @@
 # CDC Pipeline — Near Real-Time Lakehouse
 
+> **Portfolio navigation:** For the expanded reference architecture, dashboard/API, Kubernetes manifests and observability tooling, see [CDC Pipeline Big Data](https://github.com/Elghouali/cdc-pipeline-bigdata). This repository preserves the original local lakehouse implementation and its setup instructions.
+
 A fully self-contained CDC (Change Data Capture) pipeline that captures
 row-level changes from a PostgreSQL e-commerce database and materialises
 them as Iceberg tables in a Medallion Lakehouse.
